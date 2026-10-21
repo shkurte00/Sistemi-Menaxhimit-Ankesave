@@ -1,14 +1,5 @@
 # Sistemi për Menaxhimin e Ankesave dhe Kërkesave të Klientit
 
-**Universiteti:** Universiteti “Ukshin Hoti” – Prizren  
-**Fakulteti:** Fakulteti i Shkencave Kompjuterike  
-**Programi:** Dizajnimi i Softuerëve  
-**Lënda:** Projekt  
-**Studenti/ja:** Shkurte Bytyqi (ID: 240329075)  
-**Profesori:** Endrit Fetahu  
-**Data:** Tetor 2026  
-
----
 
 ## 1. Analiza e Problemit dhe Konteksti
 
