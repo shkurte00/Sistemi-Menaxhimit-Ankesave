@@ -1,9 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request, jsonify
 from flask_mysqldb import MySQL
 
 app = Flask(__name__)
 
-# Konfigurimi i lidhjes me MySQL
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'shkurte@bytyqi1'
@@ -11,7 +10,10 @@ app.config['MYSQL_DB'] = 'complaint_db'
 
 mysql = MySQL(app)
 
-# 1. Regjistrimi i përdoruesit (POST /api/auth/register)
+@app.route('/')
+def home():
+    return render_template('index.html')
+
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -25,7 +27,6 @@ def register():
     cursor.close()
     return jsonify({'success': True, 'message': 'Përdoruesi u regjistrua me sukses!'}), 201
 
-# 2. Login (POST /api/auth/login)
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -42,7 +43,6 @@ def login():
         return jsonify({'success': True, 'message': 'Kyçja u realizua me sukses!', 'user': {'id': user[0], 'name': user[1], 'role': user[2]}}), 200
     return jsonify({'success': False, 'message': 'Kredencialet janë të gabuara!'}), 401
 
-# 3. Leximi i ankesave (GET /api/complaints)
 @app.route('/api/complaints', methods=['GET'])
 def get_complaints():
     cursor = mysql.connection.cursor()
@@ -53,7 +53,6 @@ def get_complaints():
     complaints = [{'id': r[0], 'title': r[1], 'description': r[2], 'status': r[3], 'priority': r[4]} for r in rows]
     return jsonify({'success': True, 'data': complaints}), 200
 
-# 4. Krijimi i një ankesë të re (POST /api/complaints)
 @app.route('/api/complaints', methods=['POST'])
 def create_complaint():
     data = request.get_json()
@@ -61,8 +60,23 @@ def create_complaint():
         return jsonify({'success': False, 'message': 'Titulli dhe përshkrimi janë të detyrueshëm!'}), 400
     
     cursor = mysql.connection.cursor()
+    
+    cursor.execute("SELECT id FROM users LIMIT 1")
+    user = cursor.fetchone()
+    
+    if user:
+        user_id = user[0]
+    else:
+        cursor.execute("INSERT INTO users (full_name, email, password, role) VALUES (%s, %s, %s, %s)",
+                       ('Klient Vizitor', 'vizitor@example.com', '123456', 'client'))
+        mysql.connection.commit()
+        user_id = cursor.lastrowid
+
+    kategoria_zgjedhur = data.get('priority', 'Teknike')
+    pershkrimi_plote = f"[{kategoria_zgjedhur}] " + data['description']
+
     cursor.execute("INSERT INTO complaints (user_id, category_id, title, description, priority) VALUES (%s, %s, %s, %s, %s)",
-                   (data.get('user_id', 1), data.get('category_id', 1), data['title'], data['description'], data.get('priority', 'Mesatare')))
+                   (user_id, data.get('category_id', 1), data['title'], pershkrimi_plote, 'Mesatare'))
     mysql.connection.commit()
     complaint_id = cursor.lastrowid
     cursor.close()
