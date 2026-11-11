@@ -3,76 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menaxhimi i Ankesave dhe Kërkesave</title>
+    <title>Sistemi i Menaxhimit të Ankesave</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container my-5">
-        <h1 class="text-center text-primary mb-5 fw-bold">Sistemi për Menaxhimin e Ankesave</h1>
 
-        <div class="row">
-            <div class="col-lg-4 mb-4">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        Krijo Ankesë / Kërkesë të Re
+    <nav class="navbar navbar-dark navbar-advanced px-4 mb-4 py-3">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <span>HelpDesk <span class="text-gradient">Professional</span></span>
+            </a>
+            <div class="system-badge">
+                <span class="pulse-dot"></span>
+                <span>Sistemi Online</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 pb-5">
+        
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <div>
+                        <p class="metric-title">Total Ankesa</p>
+                        <h3 class="metric-value text-white" id="statTotal">0</h3>
                     </div>
-                    <div class="card-body">
+                    <div class="metric-icon icon-blue">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <div>
+                        <p class="metric-title">Në Pritje</p>
+                        <h3 class="metric-value text-amber" id="statPending">0</h3>
+                    </div>
+                    <div class="metric-icon icon-amber">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <div>
+                        <p class="metric-title">Të Zgjidhura</p>
+                        <h3 class="metric-value text-emerald" id="statResolved">0</h3>
+                    </div>
+                    <div class="metric-icon icon-emerald">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            
+            <div class="col-lg-4">
+                <div class="panel-card h-100">
+                    <div class="panel-header">
+                        <h5 class="m-0 d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-pen-to-square text-primary-glow"></i>
+                            Krijo Ankesë të Re
+                        </h5>
+                    </div>
+                    <div class="panel-body p-4">
                         <form id="complaintForm">
                             <div class="mb-3">
-                                <label for="clientName" class="form-label">Emri i Klientit</label>
-                                <input type="text" class="form-control" id="clientName" required>
+                                <label for="clientName" class="form-label-custom">Emri i Klientit</label>
+                                <div class="custom-input-group">
+                                    <span class="input-group-addon"><i class="fa-regular fa-user"></i></span>
+                                    <input type="text" class="form-control-advanced border-start-0" id="clientName" placeholder="Shkruani emrin..." required>
+                                </div>
                             </div>
+
                             <div class="mb-3">
-                                <label for="category" class="form-label">Kategoria</label>
-                                <select class="form-select" id="category" required>
-                                    <option value="" selected disabled>Zgjidh kategorinë...</option>
-                                    <option value="Teknike">Teknike</option>
-                                    <option value="Administrative">Administrative</option>
-                                    <option value="Financiare">Financiare</option>
-                                    <option value="Tjetër">Tjetër</option>
-                                </select>
+                                <label for="category" class="form-label-custom">Kategoria</label>
+                                <div class="custom-input-group">
+                                    <span class="input-group-addon"><i class="fa-solid fa-list-check"></i></span>
+                                    <select class="form-select form-control-advanced border-start-0" id="category" required>
+                                        <option value="" selected disabled>Zgjidhni kategorinë...</option>
+                                        <option value="Teknike">Teknike</option>
+                                        <option value="Financiare">Financiare</option>
+                                        <option value="Shërbim">Shërbim</option>
+                                        <option value="Tjetër">Tjetër</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="description" class="form-label">Përshkrimi i Ankesës</label>
-                                <textarea class="form-control" id="description" rows="3" required></textarea>
+
+                            <div class="mb-4">
+                                <label for="description" class="form-label-custom">Përshkrimi i Ankesës</label>
+                                <textarea class="form-control-advanced w-100 p-3" id="description" rows="4" placeholder="Përshkruani detajet e problemit..." required></textarea>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100">Dërgo Ankesën</button>
+
+                            <button type="submit" class="btn-advanced w-100 py-3">
+                                <i class="fa-solid fa-paper-plane me-2"></i>Dërgo Ankesën
+                            </button>
                         </form>
                     </div>
                 </div>
             </div>
 
             <div class="col-lg-8">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-secondary text-white">
-                        Lista e Ankesave Ekzistuese
+                <div class="panel-card h-100">
+                    <div class="panel-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <h5 class="m-0 d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-table-cells text-primary-glow"></i>
+                            Lista e Ankesave
+                        </h5>
+                        
+                        <div class="search-box">
+                            <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" id="searchInput" class="search-input" placeholder="Kërko në regjistër...">
+                        </div>
                     </div>
-                    <div class="card-body">
+
+                    <div class="panel-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle">
+                            <table class="table advanced-table align-middle m-0" id="complaintsTable">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th class="ps-4">ID</th>
                                         <th>Klienti</th>
                                         <th>Kategoria</th>
                                         <th>Përshkrimi</th>
-                                        <th>Statusi</th>
+                                        <th class="text-center pe-4">Statusi</th>
                                     </tr>
                                 </thead>
-                                <tbody id="complaintsTableBody">
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted">Duke ngarkuar...</td>
-                                    </tr>
+                                <tbody>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

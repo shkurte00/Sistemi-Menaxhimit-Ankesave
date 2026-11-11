@@ -1,87 +1,95 @@
 from flask import Flask, render_template, request, jsonify
-from flask_mysqldb import MySQL
+from flask_cors import CORS
+import mysql.connector
+import time 
 
 app = Flask(__name__)
+CORS(app)
 
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'shkurte@bytyqi1'
-app.config['MYSQL_DB'] = 'complaint_db'
+db_config = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': 'shkurte@bytyqi1',
+    'database': 'complaint_db'
+}
 
-mysql = MySQL(app)
+def get_db_connection():
+    return mysql.connector.connect(**db_config)
 
 @app.route('/')
-def home():
+def index():
     return render_template('index.html')
-
-@app.route('/api/auth/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    if not data or not data.get('full_name') or not data.get('email') or not data.get('password'):
-        return jsonify({'success': False, 'message': 'Të gjitha fushat janë të detyrueshme!'}), 400
-    
-    cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO users (full_name, email, password, role) VALUES (%s, %s, %s, %s)",
-                   (data['full_name'], data['email'], data['password'], data.get('role', 'client')))
-    mysql.connection.commit()
-    cursor.close()
-    return jsonify({'success': True, 'message': 'Përdoruesi u regjistrua me sukses!'}), 201
-
-@app.route('/api/auth/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    if not data or not data.get('email') or not data.get('password'):
-        return jsonify({'success': False, 'message': 'Email dhe fjalëkalimi janë të detyrueshëm!'}), 400
-    
-    cursor = mysql.connection.cursor()
-    cursor.execute("SELECT id, full_name, role FROM users WHERE email = %s AND password = %s",
-                   (data['email'], data['password']))
-    user = cursor.fetchone()
-    cursor.close()
-    
-    if user:
-        return jsonify({'success': True, 'message': 'Kyçja u realizua me sukses!', 'user': {'id': user[0], 'name': user[1], 'role': user[2]}}), 200
-    return jsonify({'success': False, 'message': 'Kredencialet janë të gabuara!'}), 401
 
 @app.route('/api/complaints', methods=['GET'])
 def get_complaints():
-    cursor = mysql.connection.cursor()
-    cursor.execute("SELECT id, title, description, status, priority FROM complaints")
-    rows = cursor.fetchall()
-    cursor.close()
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
     
-    complaints = [{'id': r[0], 'title': r[1], 'description': r[2], 'status': r[3], 'priority': r[4]} for r in rows]
-    return jsonify({'success': True, 'data': complaints}), 200
+    try:
+        query = """
+            SELECT c.id, u.full_name AS client_name, cat.name AS category, c.title, c.description, c.status 
+            FROM complaints c
+            JOIN users u ON c.user_id = u.id
+            JOIN categories cat ON c.category_id = cat.id
+            ORDER BY c.id DESC
+        """
+        cursor.execute(query)
+        complaints = cursor.fetchall()
+    except Exception as e:
+        cursor.execute("SELECT id, 'Klient' AS client_name, 'Teknike' AS category, title, description, status FROM complaints ORDER BY id DESC")
+        complaints = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return jsonify(complaints), 200
 
 @app.route('/api/complaints', methods=['POST'])
 def create_complaint():
     data = request.get_json()
-    if not data or not data.get('title') or not data.get('description'):
-        return jsonify({'success': False, 'message': 'Titulli dhe përshkrimi janë të detyrueshëm!'}), 400
     
-    cursor = mysql.connection.cursor()
-    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    client_name = data.get('client_name') or data.get('clientName') or 'Klient Anonim'
+    category_name = data.get('category') or 'Teknike'
+    description = data.get('description')
+
+    if not description:
+        return jsonify({'error': 'Missing description'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     cursor.execute("SELECT id FROM users LIMIT 1")
-    user = cursor.fetchone()
+    user_row = cursor.fetchone()
     
-    if user:
-        user_id = user[0]
+    if user_row:
+        user_id = user_row[0]
+        cursor.execute("UPDATE users SET full_name = %s WHERE id = %s", (client_name, user_id))
     else:
-        cursor.execute("INSERT INTO users (full_name, email, password, role) VALUES (%s, %s, %s, %s)",
-                       ('Klient Vizitor', 'vizitor@example.com', '123456', 'client'))
-        mysql.connection.commit()
+        cursor.execute("INSERT INTO users (full_name, email, password, role) VALUES (%s, %s, %s, %s)", 
+                       (client_name, f"klient_{int(time.time())}@test.com", "123456", "client"))
         user_id = cursor.lastrowid
 
-    kategoria_zgjedhur = data.get('priority', 'Teknike')
-    pershkrimi_plote = f"[{kategoria_zgjedhur}] " + data['description']
-
-    cursor.execute("INSERT INTO complaints (user_id, category_id, title, description, priority) VALUES (%s, %s, %s, %s, %s)",
-                   (user_id, data.get('category_id', 1), data['title'], pershkrimi_plote, 'Mesatare'))
-    mysql.connection.commit()
-    complaint_id = cursor.lastrowid
-    cursor.close()
+    cursor.execute("SELECT id FROM categories WHERE name = %s", (category_name,))
+    cat_row = cursor.fetchone()
     
-    return jsonify({'success': True, 'message': 'Ankesa u krijua me sukses.', 'complaint_id': complaint_id}), 201
+    if cat_row:
+        category_id = cat_row[0]
+    else:
+        cursor.execute("INSERT INTO categories (name, description) VALUES (%s, %s)", (category_name, 'Kategori'))
+        category_id = cursor.lastrowid
+
+    title = description[:30] + '...' if len(description) > 30 else description
+
+    query = "INSERT INTO complaints (user_id, category_id, title, description, status) VALUES (%s, %s, %s, %s, %s)"
+    cursor.execute(query, (user_id, category_id, title, description, 'Në pritje'))
+    conn.commit()
+    
+    cursor.close()
+    conn.close()
+
+    return jsonify({'message': 'Complaint created successfully'}), 201
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
