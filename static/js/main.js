@@ -1,3 +1,6 @@
+let activeComplaintId = null;
+let complaintsCache = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchComplaints();
 
@@ -7,12 +10,16 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             
             const clientNameInput = document.getElementById('clientName');
+            const complaintTypeInput = document.getElementById('complaintType');
             const categoryInput = document.getElementById('category');
+            const priorityInput = document.getElementById('priority');
             const descriptionInput = document.getElementById('description');
 
             const payload = {
                 client_name: clientNameInput.value.trim(),
+                complaint_type: complaintTypeInput.value,
                 category: categoryInput.value,
+                priority: priorityInput ? priorityInput.value : 'Mesatare',
                 description: descriptionInput.value.trim()
             };
 
@@ -26,14 +33,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
+                    const result = await response.json();
+                    if (result.email_sent) {
+                        showNeonNotification("Ankesa u dërgua dhe njoftimi u dërgua në Gmail!", "success");
+                    } else {
+                        showNeonNotification("Ankesa u ruajt, por njoftimi në Gmail nuk u dërgua!", "error");
+                    }
                     form.reset();
                     fetchComplaints();
                 } else {
                     const errData = await response.json();
                     console.error('Server error:', errData);
+                    showNeonNotification("Gabim gjatë dërgimit të ankesës!", "error");
                 }
             } catch (error) {
                 console.error('Network error:', error);
+                showNeonNotification("Gabim në rrjet!", "error");
             }
         });
     }
@@ -42,11 +57,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#complaintsTable tbody tr');
-            
+            const rows = document.querySelectorAll('#complaintsTableBody tr');
+
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+    }
+
+    const adminSearchInput = document.getElementById('adminSearchInput');
+    if (adminSearchInput) {
+        adminSearchInput.addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('#adminTable tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
             });
         });
     }
@@ -55,21 +81,24 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchComplaints() {
     try {
         const response = await fetch('/api/complaints');
+        if (!response.ok) return;
         const complaints = await response.json();
-        
-        const tbody = document.querySelector('#complaintsTable tbody');
+        complaintsCache = Array.isArray(complaints) ? complaints : [];
+
+        const tbody = document.getElementById('complaintsTableBody');
         if (!tbody) return;
-        
+
         tbody.innerHTML = '';
 
         let pendingCount = 0;
         let resolvedCount = 0;
 
-        complaints.forEach(item => {
-            const clientName = item.client_name || item.clientName || 'N/A';
-            const category = item.category || 'N/A';
+        complaintsCache.forEach((item, index) => {
+            const displayNumber = index + 1;
+            const clientName = item.full_name || item.client_name || item.clientName || 'N/A';
+            const category = item.category_name || item.category || 'N/A';
             const description = item.description || 'N/A';
-            const status = item.status || 'Në Pritje';
+            const status = item.status || 'Në pritje';
 
             if (status.toLowerCase().includes('zgjidhur')) {
                 resolvedCount++;
@@ -77,12 +106,17 @@ async function fetchComplaints() {
                 pendingCount++;
             }
 
+            const shortText = description.length > 48 ? description.slice(0, 48) + '...' : description;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="ps-4 fw-semibold text-muted">#${item.id}</td>
+                <td class="ps-4 fw-semibold text-muted">#${displayNumber}</td>
                 <td class="fw-medium text-white">${escapeHtml(clientName)}</td>
-                <td><span class="badge bg-dark border border-secondary text-info">${escapeHtml(category)}</span></td>
-                <td class="text-secondary">${escapeHtml(description)}</td>
+                <td><span class="badge badge-client">${escapeHtml(category)}</span></td>
+                <td class="text-secondary">
+                    <span>${escapeHtml(shortText)}</span>
+                    <button type="button" class="btn-see-more ms-2" onclick="openComplaintByIndex(${index})">See more</button>
+                </td>
                 <td class="text-center pe-4">
                     <span class="${status.toLowerCase().includes('zgjidhur') ? 'text-emerald' : 'text-amber'} fw-semibold">
                         ${escapeHtml(status)}
@@ -92,17 +126,33 @@ async function fetchComplaints() {
             tbody.appendChild(tr);
         });
 
-        const statTotal = document.getElementById('statTotal');
-        const statPending = document.getElementById('statPending');
-        const statResolved = document.getElementById('statResolved');
+        const statTotal = document.getElementById('totalCount');
+        const statPending = document.getElementById('pendingCount');
+        const statResolved = document.getElementById('resolvedCount');
 
-        if (statTotal) statTotal.textContent = complaints.length;
+        if (statTotal) statTotal.textContent = complaintsCache.length;
         if (statPending) statPending.textContent = pendingCount;
         if (statResolved) statResolved.textContent = resolvedCount;
 
     } catch (error) {
         console.error('Fetch error:', error);
     }
+}
+
+function openComplaintByIndex(index) {
+    const item = complaintsCache[index];
+    if (!item) return;
+
+    openComplaintPost({
+        id: item.id,
+        client_name: item.full_name || item.client_name || item.clientName || 'Klient',
+        date: item.date || item.created_date || 'Sot',
+        time: item.time || item.created_time || '--:--',
+        complaint_type: item.complaint_type || 'Online',
+        category: item.category_name || item.category || 'Tjetër',
+        description: item.description || '',
+        admin_comment: item.admin_comment || item.admin_response || ''
+    });
 }
 
 function escapeHtml(text) {
@@ -113,4 +163,220 @@ function escapeHtml(text) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+const adminSearchInput = document.getElementById('adminSearchInput');
+if (adminSearchInput) {
+    adminSearchInput.addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#adminTable tbody tr');
+        rows.forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+        });
+    });
+}
+
+function showNeonNotification(message, type = 'success') {
+    const existing = document.getElementById('neon-toast-box');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'neon-toast-box';
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background-color: #111827;
+        border: 1px solid ${type === 'error' ? '#ef4444' : '#00f3ff'};
+        color: #f8fafc;
+        padding: 15px 25px;
+        border-radius: 10px;
+        box-shadow: 0 0 20px ${type === 'error' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 243, 255, 0.3)'};
+        z-index: 99999;
+        font-size: 0.95rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: fadeInOut 3s ease forwards;
+    `;
+    
+    toast.innerHTML = `<span>${type === 'error' ? '⚠️' : '✨'}</span> ${escapeHtml(message)}`;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+function confirmDelete(event, formElement) {
+    event.preventDefault(); 
+
+    let modal = document.getElementById('neon-confirm-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'neon-confirm-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(2, 4, 10, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+        `;
+        modal.innerHTML = `
+            <div style="background: #111827; border: 1px solid rgba(0, 243, 255, 0.4); padding: 25px; border-radius: 14px; width: 350px; text-align: center; box-shadow: 0 0 30px rgba(0,243,255,0.2);">
+                <h3 style="color: #00f3ff; margin-bottom: 15px; font-size: 1.1rem;">Konfirmo Veprimin</h3>
+                <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px;">A jeni të sigurt që dëshironi ta fshini këtë ankesë?</p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button id="neon-cancel-btn" style="background: transparent; border: 1px solid #64748b; color: #f8fafc; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Anulo</button>
+                    <button id="neon-ok-btn" style="background: #ef4444; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">Fshi</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    } else {
+        modal.style.display = 'flex';
+    }
+
+    document.getElementById('neon-ok-btn').onclick = function() {
+        modal.style.display = 'none';
+        formElement.submit(); 
+    };
+
+    document.getElementById('neon-cancel-btn').onclick = function() {
+        modal.style.display = 'none';
+    };
+}
+
+function openComplaintPost(complaintData) {
+    activeComplaintId = complaintData.id;
+
+    const postView = document.getElementById('complaintPostView');
+    if (!postView) return;
+
+    const clientEl = document.getElementById('postClientName');
+    const dateEl = document.getElementById('postDate');
+    const timeEl = document.getElementById('postTime');
+    const typeEl = document.getElementById('postComplaintType');
+    const catEl = document.getElementById('postCategory');
+    const descEl = document.getElementById('postDescription');
+    const clientCommentBox = document.getElementById('clientAdminCommentBox');
+    const clientCommentText = document.getElementById('clientAdminCommentText');
+
+    if (clientEl) clientEl.textContent = complaintData.client_name || 'Klient';
+    if (dateEl) dateEl.textContent = complaintData.date || 'Sot';
+    if (timeEl) timeEl.textContent = complaintData.time || '--:--';
+    if (typeEl) typeEl.textContent = complaintData.complaint_type || 'Online';
+    if (catEl) catEl.textContent = complaintData.category || 'Tjetër';
+    if (descEl) descEl.textContent = complaintData.description || '';
+
+    if (clientCommentBox && clientCommentText) {
+        if (complaintData.admin_comment) {
+            clientCommentText.textContent = complaintData.admin_comment;
+            clientCommentBox.classList.remove('d-none');
+        } else {
+            clientCommentText.textContent = '';
+            clientCommentBox.classList.add('d-none');
+        }
+    }
+
+    const commentInput = document.getElementById('adminCommentInput');
+    const savedDisplay = document.getElementById('savedCommentDisplay');
+    if (commentInput) {
+        commentInput.value = complaintData.admin_comment || '';
+    }
+    if (savedDisplay) {
+        savedDisplay.textContent = complaintData.admin_comment
+            ? `Komenti aktual: ${complaintData.admin_comment}`
+            : '';
+    }
+
+    postView.classList.remove('d-none');
+    loadComplaintHistory(complaintData.id);
+    postView.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function loadComplaintHistory(complaintId) {
+    const historyList = document.getElementById('statusHistoryList');
+    if (!historyList) return;
+
+    historyList.textContent = 'Duke u ngarkuar...';
+    try {
+        const response = await fetch(`/api/complaints/${complaintId}/history`);
+        if (!response.ok) {
+            historyList.textContent = 'Historiku nuk është i disponueshëm.';
+            return;
+        }
+        const history = await response.json();
+        if (!Array.isArray(history) || history.length === 0) {
+            historyList.textContent = 'Pa ndryshime statusi.';
+            return;
+        }
+        historyList.innerHTML = history.map(item =>
+            `<div class="border-bottom border-secondary py-1">
+                <span class="text-light">${escapeHtml(item.status)}</span>
+                <span class="ms-2">${escapeHtml(item.created_at)}</span>
+                <span class="ms-2">nga ${escapeHtml(item.changed_by_name)}</span>
+            </div>`
+        ).join('');
+    } catch (error) {
+        historyList.textContent = 'Gabim në ngarkimin e historikut.';
+    }
+}
+
+function closeComplaintPost() {
+    const postView = document.getElementById('complaintPostView');
+    if (postView) {
+        postView.classList.add('d-none');
+    }
+}
+
+async function saveAdminComment() {
+    if (!activeComplaintId) return;
+
+    const commentInput = document.getElementById('adminCommentInput');
+    const comment = commentInput ? commentInput.value.trim() : '';
+
+    try {
+        const res = await fetch(`/api/complaints/${activeComplaintId}/comment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comment })
+        });
+
+        if (res.ok) {
+            const savedDisplay = document.getElementById('savedCommentDisplay');
+            if (savedDisplay) {
+                savedDisplay.textContent = comment ? `Komenti aktual: ${comment}` : '';
+            }
+            showNeonNotification('Komenti u ruajt me sukses!', 'success');
+        } else {
+            showNeonNotification('Nuk u arrit të ruhet komenti!', 'error');
+        }
+    } catch (err) {
+        showNeonNotification('Gabim në rrjet gjatë ruajtjes së komentit!', 'error');
+    }
+}
+
+async function updateComplaintStatus(complaintId, status) {
+    try {
+        const response = await fetch(`/api/complaints/${complaintId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+
+        if (response.ok) {
+            showNeonNotification('Statusi u përditësua me sukses!', 'success');
+        } else {
+            const data = await response.json();
+            showNeonNotification(data.error || 'Nuk u arrit të përditësohet statusi!', 'error');
+            window.location.reload();
+        }
+    } catch (error) {
+        showNeonNotification('Gabim në rrjet gjatë përditësimit!', 'error');
+    }
 }

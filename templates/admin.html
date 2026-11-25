@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qendra e Komandimit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</head>
+<body class="admin-body">
+    <nav class="navbar navbar-expand-lg navbar-advanced py-2 mb-3">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center gap-2 text-white fw-bold" href="#">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <span>Control <span class="text-gradient">Hub</span></span>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <div class="system-badge d-none d-md-flex">
+                    <div class="pulse-dot"></div>
+                    <span>Administrator Aktiv</span>
+                </div>
+                <a href="{{ url_for('index') }}" class="btn-advanced">Faqja Kryesore</a>
+                <a href="/logout" class="btn-logout-custom">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 pb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+            <div>
+                <h2 class="text-gradient fw-bolder mb-1">Qendra e Komandimit</h2>
+                <p class="text-secondary mb-0">Menaxhimi, filtrimi dhe përditësimi i statusit të ankesave</p>
+            </div>
+            <div class="search-box admin-search">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="adminSearchInput" class="search-input" placeholder="Kërko klientin, kategorinë...">
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-2 col-6"><div class="metric-card"><div><div class="metric-title">Totali</div><div class="metric-value text-info">{{ stats.total or 0 }}</div></div></div></div>
+            <div class="col-md-2 col-6"><div class="metric-card"><div><div class="metric-title">Në pritje</div><div class="metric-value text-amber">{{ stats.pending or 0 }}</div></div></div></div>
+            <div class="col-md-2 col-6"><div class="metric-card"><div><div class="metric-title">Në shqyrtim</div><div class="metric-value text-info">{{ stats.reviewing or 0 }}</div></div></div></div>
+            <div class="col-md-2 col-6"><div class="metric-card"><div><div class="metric-title">Të zgjidhura</div><div class="metric-value text-emerald">{{ stats.resolved or 0 }}</div></div></div></div>
+            <div class="col-md-2 col-6"><div class="metric-card"><div><div class="metric-title">Të refuzuara</div><div class="metric-value text-danger">{{ stats.rejected or 0 }}</div></div></div></div>
+        </div>
+
+        <form method="GET" class="panel-card p-3 mb-3">
+            <div class="row g-2 align-items-end">
+                {% if selected_user_id %}
+                <input type="hidden" name="user_id" value="{{ selected_user_id }}">
+                {% endif %}
+                <div class="col-md-3">
+                    <label class="form-label-custom">Statusi</label>
+                    <select name="status" class="form-control-advanced w-100">
+                        <option value="">Të gjithë</option>
+                        {% for status in statuses %}
+                        <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-custom">Kategoria</label>
+                    <select name="category" class="form-control-advanced w-100">
+                        <option value="">Të gjitha</option>
+                        {% for category in categories %}
+                        <option value="{{ category.name }}" {% if selected_category == category.name %}selected{% endif %}>{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-custom">Prioriteti</label>
+                    <select name="priority" class="form-control-advanced w-100">
+                        <option value="">Të gjithë</option>
+                        {% for priority in priorities %}
+                        <option value="{{ priority }}" {% if selected_priority == priority %}selected{% endif %}>{{ priority }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn-advanced flex-grow-1">Filtro</button>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light">Pastro</a>
+                </div>
+            </div>
+        </form>
+
+        {% if clients %}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a href="{{ url_for('admin_dashboard') }}"
+               class="btn btn-sm {{ 'btn-info text-dark fw-bold' if not selected_user_id else 'btn-outline-info' }}">
+                Të gjithë
+            </a>
+            {% for client in clients %}
+            <a href="{{ url_for('admin_dashboard', user_id=client.id) }}"
+               class="btn btn-sm {{ 'btn-info text-dark fw-bold' if selected_user_id == client.id else 'btn-outline-info' }}">
+                {{ client.full_name }} ({{ client.total_complaints }})
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="panel-card">
+            <div class="panel-header d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-table-columns text-gradient"></i>
+                    <span>Regjistri i Ankesave</span>
+                </div>
+                <span class="badge-client">Total: {{ complaints|length }}</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table advanced-table admin-table-enhanced" id="adminTable">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">ID</th>
+                            <th>Klienti</th>
+                            <th>Ankesa</th>
+                            <th>Kategoria</th>
+                            <th>Prioriteti</th>
+                            <th>Statusi</th>
+                            <th class="text-end pe-4">Veprimet</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if complaints %}
+                            {% for complaint in complaints %}
+                            <tr>
+                                <td class="ps-4 fw-bold text-info">#{{ loop.index }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar-circle">{{ complaint.full_name[0]|upper }}</div>
+                                        <span class="fw-semibold text-white">{{ complaint.full_name }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-white">{{ complaint.title }}</div>
+                                    <div class="text-secondary small">{{ complaint.description[:50] }}{% if complaint.description|length > 50 %}...{% endif %}</div>
+                                    <button type="button" class="btn-see-more mt-1"
+                                            onclick='openComplaintPost({
+                                                id: {{ complaint.id }},
+                                                client_name: {{ (complaint.full_name or "")|tojson }},
+                                                date: {{ (complaint.created_date or "Sot")|tojson }},
+                                                time: {{ (complaint.created_time or "--:--")|tojson }},
+                                                complaint_type: {{ (complaint.complaint_type or "Online")|tojson }},
+                                                category: {{ (complaint.category_name or "Tjetër")|tojson }},
+                                                description: {{ (complaint.description or "")|tojson }},
+                                                admin_comment: {{ (complaint.admin_comment or complaint.admin_response or "")|tojson }}
+                                            })'>
+                                        See more
+                                    </button>
+                                </td>
+                                <td>
+                                    <span class="badge-category">{{ complaint.category_name }}</span>
+                                </td>
+                                <td><span class="fw-semibold text-light">{{ complaint.priority }}</span></td>
+                                <td>
+                                    <select class="form-control-advanced status-select"
+                                            onchange="updateComplaintStatus({{ complaint.id }}, this.value)"
+                                            aria-label="Statusi i ankesës">
+                                        {% for status in ['Në pritje', 'Në shqyrtim', 'Zgjidhur', 'Refuzuar'] %}
+                                            <option value="{{ status }}" {% if complaint.status == status %}selected{% endif %}>{{ status }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        {% if complaint.status != 'Zgjidhur' %}
+                                            <form action="{{ url_for('resolve_complaint', id=complaint.id) }}" method="POST" class="d-inline">
+                                                <button type="submit" class="btn-resolve-action">
+                                                    <i class="fa-solid fa-check me-1"></i>Zgjidh
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        <form action="{{ url_for('delete_complaint', id=complaint.id) }}" method="POST" class="d-inline" onsubmit="confirmDelete(event, this)">
+                                            <button type="submit" class="btn-delete-action">
+                                                <i class="fa-solid fa-trash me-1"></i>Fshi
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-secondary">Nuk ka asnjë ankesë të regjistruar.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="complaintPostView" class="panel-card p-4 mt-3 d-none">
+            <div class="d-flex justify-content-between align-items-start border-bottom border-secondary pb-3 mb-3">
+                <div>
+                    <span class="badge bg-info text-dark mb-2" id="postComplaintType">Online</span>
+                    <h4 class="text-white fw-bold mb-1" id="postClientName">Emri i Ankuesit</h4>
+                    <small class="text-secondary">
+                        <i class="fa-regular fa-calendar me-1"></i><span id="postDate">--/--/----</span>
+                        &nbsp;|&nbsp;
+                        <i class="fa-regular fa-clock me-1"></i><span id="postTime">--:--</span>
+                        &nbsp;|&nbsp;
+                        <span class="text-info" id="postCategory">Kategoria</span>
+                    </small>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-light" onclick="closeComplaintPost()">Mbyll</button>
+            </div>
+
+            <p class="text-light mb-3" id="postDescription"></p>
+
+            <div id="adminCommentBox" class="border-top border-secondary pt-3">
+                <label for="adminCommentInput" class="form-label-custom">Komenti i Administratorit</label>
+                <textarea id="adminCommentInput" class="form-control-advanced w-100 mb-2" rows="2" placeholder="Shkruaj një koment për këtë ankesë..."></textarea>
+                <button type="button" class="btn-advanced" onclick="saveAdminComment()">Ruaj Komentin</button>
+                <div id="savedCommentDisplay" class="mt-2 small text-info"></div>
+            </div>
+            <div id="statusHistory" class="border-top border-secondary pt-3 mt-3">
+                <div class="small text-info fw-semibold mb-2">Historiku i statusit</div>
+                <div id="statusHistoryList" class="text-secondary small">Pa të dhëna.</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

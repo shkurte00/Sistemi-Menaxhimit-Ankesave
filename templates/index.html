@@ -3,152 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistemi i Menaxhimit të Ankesave</title>
+    <title>Sistemi për Menaxhimin e Ankesave</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </head>
 <body>
+    <div class="w-100">
+        <nav class="navbar navbar-expand-lg navbar-advanced py-2 mb-3">
+            <div class="container-fluid px-4">
+                <a class="navbar-brand d-flex align-items-center gap-2 text-white fw-bold" href="#">
+                    <div class="brand-icon"><i class="fa-solid fa-layer-group"></i></div>
+                    <span>HelpDesk <span class="text-gradient">Professional</span></span>
+                </a>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="system-badge d-none d-md-flex">
+                        <div class="pulse-dot"></div>
+                        <span>Sistemi Online</span>
+                    </div>
+                    <span class="text-light small">Përshëndetje, {{ session.get('full_name', 'Klient') }}</span>
+                    {% if session.get('role') == 'admin' %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn-advanced">Admin</a>
+                    {% endif %}
+                    <a href="/logout">Logout</a>
+                </div>
+            </div>
+        </nav>
 
-    <nav class="navbar navbar-dark navbar-advanced px-4 mb-4 py-3">
-        <div class="container-fluid">
-            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
-                <div class="brand-icon">
-                    <i class="fa-solid fa-layer-group"></i>
-                </div>
-                <span>HelpDesk <span class="text-gradient">Professional</span></span>
-            </a>
-            <div class="system-badge">
-                <span class="pulse-dot"></span>
-                <span>Sistemi Online</span>
+        <div class="container-fluid px-4 pb-4">
+            <div class="row g-3 mb-3">
+                <div class="col-md-4"><div class="metric-card"><div><div class="metric-title">Total Ankesa</div><div class="metric-value text-info" id="totalCount">0</div></div><div class="metric-icon icon-cyan"><i class="fa-solid fa-folder-open"></i></div></div></div>
+                <div class="col-md-4"><div class="metric-card"><div><div class="metric-title">Në Pritje</div><div class="metric-value text-amber" id="pendingCount">0</div></div><div class="metric-icon icon-amber"><i class="fa-solid fa-clock-rotate-left"></i></div></div></div>
+                <div class="col-md-4"><div class="metric-card"><div><div class="metric-title">Të Zgjidhura</div><div class="metric-value text-emerald" id="resolvedCount">0</div></div><div class="metric-icon icon-emerald"><i class="fa-solid fa-circle-check"></i></div></div></div>
             </div>
-        </div>
-    </nav>
 
-    <div class="container-fluid px-4 pb-5">
-        
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="metric-card">
-                    <div>
-                        <p class="metric-title">Total Ankesa</p>
-                        <h3 class="metric-value text-white" id="statTotal">0</h3>
-                    </div>
-                    <div class="metric-icon icon-blue">
-                        <i class="fa-solid fa-folder-open"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="metric-card">
-                    <div>
-                        <p class="metric-title">Në Pritje</p>
-                        <h3 class="metric-value text-amber" id="statPending">0</h3>
-                    </div>
-                    <div class="metric-icon icon-amber">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="metric-card">
-                    <div>
-                        <p class="metric-title">Të Zgjidhura</p>
-                        <h3 class="metric-value text-emerald" id="statResolved">0</h3>
-                    </div>
-                    <div class="metric-icon icon-emerald">
-                        <i class="fa-solid fa-circle-check"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row g-4">
-            
-            <div class="col-lg-4">
-                <div class="panel-card h-100">
-                    <div class="panel-header">
-                        <h5 class="m-0 d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-pen-to-square text-primary-glow"></i>
-                            Krijo Ankesë të Re
-                        </h5>
-                    </div>
-                    <div class="panel-body p-4">
-                        <form id="complaintForm">
-                            <div class="mb-3">
-                                <label for="clientName" class="form-label-custom">Emri i Klientit</label>
-                                <div class="custom-input-group">
-                                    <span class="input-group-addon"><i class="fa-regular fa-user"></i></span>
-                                    <input type="text" class="form-control-advanced border-start-0" id="clientName" placeholder="Shkruani emrin..." required>
+            <div class="row g-3">
+                <div class="col-lg-4">
+                    <div class="panel-card">
+                        <div class="panel-header"><i class="fa-regular fa-pen-to-square me-2 text-info"></i>Krijo Ankesë të Re</div>
+                        <div class="p-3">
+                            <form id="complaintForm">
+                                <div class="mb-3">
+                                    <label for="clientName" class="form-label-custom">Emri i Klientit</label>
+                                    <input type="text" id="clientName" name="client_name" class="form-control-advanced w-100" value="{{ session.get('full_name', '') }}" required>
                                 </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="category" class="form-label-custom">Kategoria</label>
-                                <div class="custom-input-group">
-                                    <span class="input-group-addon"><i class="fa-solid fa-list-check"></i></span>
-                                    <select class="form-select form-control-advanced border-start-0" id="category" required>
-                                        <option value="" selected disabled>Zgjidhni kategorinë...</option>
-                                        <option value="Teknike">Teknike</option>
-                                        <option value="Financiare">Financiare</option>
-                                        <option value="Shërbim">Shërbim</option>
+                                <div class="mb-3">
+                                    <label for="complaintType" class="form-label-custom">Forma e Ankesës</label>
+                                    <select id="complaintType" name="complaint_type" class="form-control-advanced w-100" required>
+                                        <option value="Online">Online</option>
+                                        <option value="Jo Online (Në zyrë / Sportel)">Jo Online (Në zyrë / Sportel)</option>
+                                        <option value="Telefonike">Telefonike</option>
+                                        <option value="Email">Email</option>
                                         <option value="Tjetër">Tjetër</option>
                                     </select>
                                 </div>
-                            </div>
-
-                            <div class="mb-4">
-                                <label for="description" class="form-label-custom">Përshkrimi i Ankesës</label>
-                                <textarea class="form-control-advanced w-100 p-3" id="description" rows="4" placeholder="Përshkruani detajet e problemit..." required></textarea>
-                            </div>
-
-                            <button type="submit" class="btn-advanced w-100 py-3">
-                                <i class="fa-solid fa-paper-plane me-2"></i>Dërgo Ankesën
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-8">
-                <div class="panel-card h-100">
-                    <div class="panel-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-                        <h5 class="m-0 d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-table-cells text-primary-glow"></i>
-                            Lista e Ankesave
-                        </h5>
-                        
-                        <div class="search-box">
-                            <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-                            <input type="text" id="searchInput" class="search-input" placeholder="Kërko në regjistër...">
+                                <div class="mb-3">
+                                    <label for="category" class="form-label-custom">Lloji / Kategoria e Ankesës</label>
+                                    <select id="category" name="category" class="form-control-advanced w-100" required>
+                                        <option value="" disabled selected>Zgjidhni kategorinë...</option>
+                                        <option value="Probleme Teknike">Probleme Teknike</option>
+                                        <option value="Faturim &amp; Pagesa">Faturim &amp; Pagesa</option>
+                                        <option value="Cilësia e Shërbimit">Cilësia e Shërbimit</option>
+                                        <option value="Stafi &amp; Komunikimi">Stafi &amp; Komunikimi</option>
+                                        <option value="Vonesa / Afatet">Vonesa / Afatet</option>
+                                        <option value="Llogaria &amp; Qasja">Llogaria &amp; Qasja</option>
+                                        <option value="Siguria &amp; Privatësia">Siguria &amp; Privatësia</option>
+                                        <option value="Kontrata &amp; Kushtet">Kontrata &amp; Kushtet</option>
+                                        <option value="Tjetër">Tjetër</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="priority" class="form-label-custom">Niveli i Urgjencës</label>
+                                    <select id="priority" name="priority" class="form-control-advanced w-100" required>
+                                        <option value="E ulët">E ulët</option>
+                                        <option value="Mesatare" selected>Mesatare</option>
+                                        <option value="E lartë">E lartë</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="description" class="form-label-custom">Përshkrimi i Ankesës</label>
+                                    <textarea id="description" name="description" class="form-control-advanced w-100" placeholder="Përshkruani detajet e problemit..." required></textarea>
+                                </div>
+                                <button type="submit" class="btn-advanced w-100"><i class="fa-regular fa-paper-plane me-2"></i>Dërgo Ankesën</button>
+                            </form>
                         </div>
                     </div>
+                </div>
 
-                    <div class="panel-body p-0">
+                <div class="col-lg-8">
+                    <div class="panel-card">
+                        <div class="panel-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span><i class="fa-solid fa-list-ul me-2 text-info"></i>Ankesat e Mia</span>
+                            <div class="search-box"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="searchInput" class="search-input" placeholder="Kërko në regjistër..."></div>
+                        </div>
                         <div class="table-responsive">
-                            <table class="table advanced-table align-middle m-0" id="complaintsTable">
-                                <thead>
-                                    <tr>
-                                        <th class="ps-4">ID</th>
-                                        <th>Klienti</th>
-                                        <th>Kategoria</th>
-                                        <th>Përshkrimi</th>
-                                        <th class="text-center pe-4">Statusi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                </tbody>
+                            <table class="table advanced-table">
+                                <thead><tr><th class="ps-4">ID</th><th>Klienti</th><th>Kategoria</th><th>Përshkrimi</th><th class="text-center pe-4">Statusi</th></tr></thead>
+                                <tbody id="complaintsTableBody"></tbody>
                             </table>
                         </div>
                     </div>
+
+                    <div id="complaintPostView" class="panel-card p-4 mt-3 d-none">
+                        <div class="d-flex justify-content-between align-items-start border-bottom border-secondary pb-3 mb-3">
+                            <div>
+                                <span class="badge bg-info text-dark mb-2" id="postComplaintType">Online</span>
+                                <h4 class="text-white fw-bold mb-1" id="postClientName">Emri i Ankuesit</h4>
+                                <small class="text-secondary">
+                                    <i class="fa-regular fa-calendar me-1"></i><span id="postDate">--/--/----</span>&nbsp;|&nbsp;
+                                    <i class="fa-regular fa-clock me-1"></i><span id="postTime">--:--</span>&nbsp;|&nbsp;
+                                    <span class="text-info" id="postCategory">Kategoria</span>
+                                </small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-light" onclick="closeComplaintPost()">Mbyll</button>
+                        </div>
+                        <p class="text-light mb-0" id="postDescription"></p>
+                        <div id="clientAdminCommentBox" class="border-top border-secondary pt-3 mt-3 d-none">
+                            <div class="small text-info fw-semibold mb-1"><i class="fa-solid fa-reply me-1"></i>Përgjigjja / Komenti i Administratorit:</div>
+                            <p class="text-light mb-0 small" id="clientAdminCommentText"></p>
+                        </div>
+                        <div class="border-top border-secondary pt-3 mt-3">
+                            <div class="small text-info fw-semibold mb-2">Historiku i statusit</div>
+                            <div id="statusHistoryList" class="text-secondary small">Pa të dhëna.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
