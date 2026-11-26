@@ -115,7 +115,7 @@ async function fetchComplaints() {
                 <td><span class="badge badge-client">${escapeHtml(category)}</span></td>
                 <td class="text-secondary">
                     <span>${escapeHtml(shortText)}</span>
-                    <button type="button" class="btn-see-more ms-2" onclick="openComplaintByIndex(${index})">See more</button>
+                    <button type="button" class="btn-see-more ms-2" onclick="openComplaintByIndex(${index})">Shiko më shumë</button>
                 </td>
                 <td class="text-center pe-4">
                     <span class="${status.toLowerCase().includes('zgjidhur') ? 'text-emerald' : 'text-amber'} fw-semibold">
@@ -294,9 +294,139 @@ function openComplaintPost(complaintData) {
             : '';
     }
 
+    const assignedAdminSelect = document.getElementById('assignedAdminSelect');
+    if (assignedAdminSelect) {
+        assignedAdminSelect.value = complaintData.assigned_admin_id
+            ? String(complaintData.assigned_admin_id)
+            : '';
+    }
+    const dueAtInput = document.getElementById('dueAtInput');
+    if (dueAtInput && complaintData.due_at) {
+        const due = new Date(complaintData.due_at);
+        if (!Number.isNaN(due.getTime())) {
+            const local = new Date(due.getTime() - due.getTimezoneOffset() * 60000);
+            dueAtInput.value = local.toISOString().slice(0, 16);
+        }
+    }
+
     postView.classList.remove('d-none');
     loadComplaintHistory(complaintData.id);
+    loadComplaintComments(complaintData.id);
+    loadComplaintAttachments(complaintData.id);
     postView.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function loadComplaintComments(complaintId) {
+    const list = document.getElementById('complaintCommentsList');
+    if (!list) return;
+    list.textContent = 'Duke u ngarkuar...';
+    try {
+        const response = await fetch(`/api/complaints/${complaintId}/comments`);
+        if (!response.ok) {
+            list.textContent = 'Biseda nuk është e disponueshme.';
+            return;
+        }
+        const comments = await response.json();
+        list.innerHTML = comments.length
+            ? comments.map(item => `
+                <div class="border-bottom border-secondary py-2">
+                    <div class="small text-info fw-semibold">${escapeHtml(item.full_name)} · ${escapeHtml(item.role)}</div>
+                    <div class="text-light small">${escapeHtml(item.comment)}</div>
+                    <div class="text-secondary small">${escapeHtml(item.created_at)}</div>
+                </div>
+            `).join('')
+            : '<div class="text-secondary small">Nuk ka komente ende.</div>';
+    } catch (error) {
+        list.textContent = 'Gabim në ngarkimin e bisedës.';
+    }
+}
+
+async function addComplaintComment() {
+    if (!activeComplaintId) return;
+    const input = document.getElementById('clientCommentInput');
+    const comment = input ? input.value.trim() : '';
+    if (!comment) {
+        showNeonNotification('Shkruani një koment!', 'error');
+        return;
+    }
+    const response = await fetch(`/api/complaints/${activeComplaintId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment })
+    });
+    if (response.ok) {
+        if (input) input.value = '';
+        await loadComplaintComments(activeComplaintId);
+        showNeonNotification('Komenti u dërgua!', 'success');
+    } else {
+        const data = await response.json();
+        showNeonNotification(data.error || 'Komenti nuk u dërgua.', 'error');
+    }
+}
+
+async function loadComplaintAttachments(complaintId) {
+    const list = document.getElementById('complaintAttachmentsList');
+    if (!list) return;
+    list.textContent = 'Duke u ngarkuar...';
+    try {
+        const response = await fetch(`/api/complaints/${complaintId}/attachments`);
+        if (!response.ok) {
+            list.textContent = 'Bashkëngjitjet nuk janë të disponueshme.';
+            return;
+        }
+        const attachments = await response.json();
+        list.innerHTML = attachments.length
+            ? attachments.map(item => `
+                <a class="d-block text-info text-decoration-none py-1"
+                   href="/api/attachments/${item.id}">${escapeHtml(item.original_name)}</a>
+            `).join('')
+            : '<div class="text-secondary small">Nuk ka skedarë të bashkëngjitur.</div>';
+    } catch (error) {
+        list.textContent = 'Gabim në ngarkimin e skedarëve.';
+    }
+}
+
+async function uploadComplaintAttachment() {
+    if (!activeComplaintId) return;
+    const input = document.getElementById('complaintAttachmentInput');
+    if (!input || !input.files.length) {
+        showNeonNotification('Zgjidhni një skedar!', 'error');
+        return;
+    }
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+    const response = await fetch(`/api/complaints/${activeComplaintId}/attachments`, {
+        method: 'POST',
+        body: formData
+    });
+    if (response.ok) {
+        input.value = '';
+        await loadComplaintAttachments(activeComplaintId);
+        showNeonNotification('Skedari u ngarkua!', 'success');
+    } else {
+        const data = await response.json();
+        showNeonNotification(data.error || 'Ngarkimi dështoi.', 'error');
+    }
+}
+
+async function updateComplaintAssignment(complaintId) {
+    const adminSelect = document.getElementById('assignedAdminSelect');
+    const dueInput = document.getElementById('dueAtInput');
+    const payload = {
+        assigned_admin_id: adminSelect ? adminSelect.value : '',
+        due_at: dueInput ? dueInput.value : ''
+    };
+    const response = await fetch(`/api/complaints/${complaintId}/assignment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (response.ok) {
+        showNeonNotification('Caktimi dhe afati u ruajtën!', 'success');
+    } else {
+        const data = await response.json();
+        showNeonNotification(data.error || 'Ruajtja dështoi.', 'error');
+    }
 }
 
 async function loadComplaintHistory(complaintId) {

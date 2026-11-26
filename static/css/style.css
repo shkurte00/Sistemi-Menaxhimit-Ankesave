@@ -124,6 +124,21 @@ body {
     text-decoration: underline;
 }
 
+.create-complaint-shell {
+    width: 100%;
+    max-width: 1100px;
+    min-height: calc(100vh - 150px);
+}
+
+.create-complaint-form .form-control-advanced {
+    min-height: 48px;
+}
+
+.create-complaint-form textarea.form-control-advanced {
+    min-height: 180px;
+    resize: vertical;
+}
+
 .navbar-advanced {
     background: var(--bg-panel);
     border-bottom: 1px solid var(--border-neon);

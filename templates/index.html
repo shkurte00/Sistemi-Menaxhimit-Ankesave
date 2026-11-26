@@ -39,63 +39,16 @@
             </div>
 
             <div class="row g-3">
-                <div class="col-lg-4">
-                    <div class="panel-card">
-                        <div class="panel-header"><i class="fa-regular fa-pen-to-square me-2 text-info"></i>Krijo Ankesë të Re</div>
-                        <div class="p-3">
-                            <form id="complaintForm">
-                                <div class="mb-3">
-                                    <label for="clientName" class="form-label-custom">Emri i Klientit</label>
-                                    <input type="text" id="clientName" name="client_name" class="form-control-advanced w-100" value="{{ session.get('full_name', '') }}" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="complaintType" class="form-label-custom">Forma e Ankesës</label>
-                                    <select id="complaintType" name="complaint_type" class="form-control-advanced w-100" required>
-                                        <option value="Online">Online</option>
-                                        <option value="Jo Online (Në zyrë / Sportel)">Jo Online (Në zyrë / Sportel)</option>
-                                        <option value="Telefonike">Telefonike</option>
-                                        <option value="Email">Email</option>
-                                        <option value="Tjetër">Tjetër</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="category" class="form-label-custom">Lloji / Kategoria e Ankesës</label>
-                                    <select id="category" name="category" class="form-control-advanced w-100" required>
-                                        <option value="" disabled selected>Zgjidhni kategorinë...</option>
-                                        <option value="Probleme Teknike">Probleme Teknike</option>
-                                        <option value="Faturim &amp; Pagesa">Faturim &amp; Pagesa</option>
-                                        <option value="Cilësia e Shërbimit">Cilësia e Shërbimit</option>
-                                        <option value="Stafi &amp; Komunikimi">Stafi &amp; Komunikimi</option>
-                                        <option value="Vonesa / Afatet">Vonesa / Afatet</option>
-                                        <option value="Llogaria &amp; Qasja">Llogaria &amp; Qasja</option>
-                                        <option value="Siguria &amp; Privatësia">Siguria &amp; Privatësia</option>
-                                        <option value="Kontrata &amp; Kushtet">Kontrata &amp; Kushtet</option>
-                                        <option value="Tjetër">Tjetër</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="priority" class="form-label-custom">Niveli i Urgjencës</label>
-                                    <select id="priority" name="priority" class="form-control-advanced w-100" required>
-                                        <option value="E ulët">E ulët</option>
-                                        <option value="Mesatare" selected>Mesatare</option>
-                                        <option value="E lartë">E lartë</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="description" class="form-label-custom">Përshkrimi i Ankesës</label>
-                                    <textarea id="description" name="description" class="form-control-advanced w-100" placeholder="Përshkruani detajet e problemit..." required></textarea>
-                                </div>
-                                <button type="submit" class="btn-advanced w-100"><i class="fa-regular fa-paper-plane me-2"></i>Dërgo Ankesën</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-8">
+                <div class="col-12">
                     <div class="panel-card">
                         <div class="panel-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <span><i class="fa-solid fa-list-ul me-2 text-info"></i>Ankesat e Mia</span>
-                            <div class="search-box"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="searchInput" class="search-input" placeholder="Kërko në regjistër..."></div>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="search-box"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="searchInput" class="search-input" placeholder="Kërko në regjistër..."></div>
+                                <a href="{{ url_for('create_complaint_page') }}" class="btn-advanced text-decoration-none text-nowrap">
+                                    <i class="fa-solid fa-plus me-2"></i>Krijo Ankesë
+                                </a>
+                            </div>
                         </div>
                         <div class="table-responsive">
                             <table class="table advanced-table">
@@ -126,6 +79,18 @@
                         <div class="border-top border-secondary pt-3 mt-3">
                             <div class="small text-info fw-semibold mb-2">Historiku i statusit</div>
                             <div id="statusHistoryList" class="text-secondary small">Pa të dhëna.</div>
+                        </div>
+                        <div class="border-top border-secondary pt-3 mt-3">
+                            <div class="small text-info fw-semibold mb-2">Biseda e ankesës</div>
+                            <div id="complaintCommentsList" class="mb-3 text-secondary small">Pa komente.</div>
+                            <textarea id="clientCommentInput" class="form-control-advanced w-100 mb-2" rows="2" maxlength="2000" placeholder="Shkruani një përgjigje..."></textarea>
+                            <button type="button" class="btn-advanced" onclick="addComplaintComment()">Dërgo koment</button>
+                        </div>
+                        <div class="border-top border-secondary pt-3 mt-3">
+                            <div class="small text-info fw-semibold mb-2">Bashkëngjitjet</div>
+                            <div id="complaintAttachmentsList" class="mb-2 text-secondary small">Pa skedarë.</div>
+                            <input type="file" id="complaintAttachmentInput" class="form-control-advanced w-100 mb-2" accept=".pdf,.png,.jpg,.jpeg,.gif,.txt,.doc,.docx">
+                            <button type="button" class="btn-advanced" onclick="uploadComplaintAttachment()">Ngarko skedar</button>
                         </div>
                     </div>
                 </div>

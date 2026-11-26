@@ -147,9 +147,11 @@
                                                 complaint_type: {{ (complaint.complaint_type or "Online")|tojson }},
                                                 category: {{ (complaint.category_name or "Tjetër")|tojson }},
                                                 description: {{ (complaint.description or "")|tojson }},
-                                                admin_comment: {{ (complaint.admin_comment or complaint.admin_response or "")|tojson }}
+                                                admin_comment: {{ (complaint.admin_comment or complaint.admin_response or "")|tojson }},
+                                                assigned_admin_id: {{ (complaint.assigned_admin_id or "")|tojson }},
+                                                due_at: {{ (complaint.due_at|string or "")|tojson }}
                                             })'>
-                                        See more
+                                        Shiko më shumë
                                     </button>
                                 </td>
                                 <td>
@@ -220,6 +222,35 @@
             <div id="statusHistory" class="border-top border-secondary pt-3 mt-3">
                 <div class="small text-info fw-semibold mb-2">Historiku i statusit</div>
                 <div id="statusHistoryList" class="text-secondary small">Pa të dhëna.</div>
+            </div>
+            <div class="border-top border-secondary pt-3 mt-3">
+                <div class="small text-info fw-semibold mb-2">Caktimi dhe afati</div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label for="assignedAdminSelect" class="form-label-custom">Administratori përgjegjës</label>
+                        <select id="assignedAdminSelect" class="form-control-advanced w-100">
+                            <option value="">Pa caktuar</option>
+                            {% for admin in admins %}
+                            <option value="{{ admin.id }}">{{ admin.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="dueAtInput" class="form-label-custom">Afati i zgjidhjes</label>
+                        <input type="datetime-local" id="dueAtInput" class="form-control-advanced w-100">
+                    </div>
+                </div>
+                <button type="button" class="btn-advanced mt-2" onclick="updateComplaintAssignment(activeComplaintId)">Ruaj caktimin</button>
+            </div>
+            <div class="border-top border-secondary pt-3 mt-3">
+                <div class="small text-info fw-semibold mb-2">Bashkëngjitjet</div>
+                <div id="complaintAttachmentsList" class="mb-2 text-secondary small">Pa skedarë.</div>
+                <input type="file" id="complaintAttachmentInput" class="form-control-advanced w-100 mb-2" accept=".pdf,.png,.jpg,.jpeg,.gif,.txt,.doc,.docx">
+                <button type="button" class="btn-advanced" onclick="uploadComplaintAttachment()">Ngarko skedar</button>
+            </div>
+            <div class="border-top border-secondary pt-3 mt-3">
+                <div class="small text-info fw-semibold mb-2">Biseda e ankesës</div>
+                <div id="complaintCommentsList" class="mb-2 text-secondary small">Pa komente.</div>
             </div>
         </div>
     </div>
